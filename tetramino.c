@@ -63,9 +63,10 @@ typedef struct Tetra{
 int grid[GRID_X][GRID_Y];
 int grid_next[TINY_GRID_X][TINY_GRID_Y];
 Tetra *runner = NULL;
+Tetra *next_run;
 int next_tetra;
 
-void send_tetra();
+void send_tetra(int type);
 void rotate_tetra();
 
 void init_grid();
@@ -162,7 +163,7 @@ int check_if_lose(int a[8]){
 	return 0;
 }
 
-void create_tetra(int g[GRID_X][GRID_Y], int a[8], int pivot_x, int pivot_y, int color){
+void create_tetra(int a[8], int pivot_x, int pivot_y, int color){
 	XSetForeground(display, gc, colori[color]);
         int i = 0, j = 0;
 	runner->color = colori[color];
@@ -177,7 +178,7 @@ void create_tetra(int g[GRID_X][GRID_Y], int a[8], int pivot_x, int pivot_y, int
 		c->y = start_grid_y + (SIZE * a[j+1]);
 		c->color = colori[color];
 		c->color_id = runner->type;
-		g[a[j]][a[j+1]] = color;
+		grid[a[j]][a[j+1]] = color;
 		i++; j += 2;
 	}
 	count++; 
@@ -231,29 +232,29 @@ void rotate_tetra(){
 
 }
 
-void send_tetra(int g[GRID_X][GRID_Y], int type){
+void send_tetra(int type){
 	int a[8];
 	if(type == 0){
 		int tmp[] = {4,0,5,0,6,0,5,1};
 		memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(g, a, 5, 0, type);
+		if(check_if_lose(a) == 0) create_tetra(a, 5, 0, type);
 		//printf("Type is: %d\n", type);
 	}else if(type == 1){
 		int tmp[] = {3,0,4,0,5,0,6,0};
 		memcpy(a, tmp, sizeof a);
-                if(check_if_lose(a) == 0) create_tetra(g, a, 4, 0, type);
+                if(check_if_lose(a) == 0) create_tetra(a, 4, 0, type);
 	}else if(type == 2){
 		int tmp[] = {4,0,5,0,4,1,5,1};
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(g, a, -1, -1, type);
+		if(check_if_lose(a) == 0) create_tetra(a, -1, -1, type);
         }else if(type == 3){
 		int tmp[] = {4,0,4,1,4,2,5,2};
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(g, a, 4, 1, type);
+		if(check_if_lose(a) == 0) create_tetra(a, 4, 1, type);
         }else if(type == 4){
 		int tmp[] = {4,0,4,1,5,1,5,2}; 
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(g, a, 4, 1, type);
+		if(check_if_lose(a) == 0) create_tetra(a, 4, 1, type);
         }
 }
 
@@ -370,7 +371,7 @@ void update_grid(){
 		runner->pivot_y++;
 	}else{
 		check_delete_update_rows();
-		send_tetra(grid, next_tetra);
+		send_tetra(next_tetra);
 		next_tetra = rand() % 5;
 	}
 }
@@ -397,7 +398,7 @@ void printf_grid(){
 	char *is_empty = "  ";
 	int size_cell  = strlen(is_full);
 	int tot_len    = GRID_X * size_cell;
-	snprintf(point, sizeof(point), "Point: %d", count);
+	snprintf(point, sizeof(point), "Lvl: %d Next: %d", count, next_tetra);
 	printf("\x1B[%dA", GRID_Y +2);
 	
 	printf("\u2554");
