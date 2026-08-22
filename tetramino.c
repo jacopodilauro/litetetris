@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -11,6 +12,8 @@
 #define SIZE 30
 #define GRID_X 10
 #define GRID_Y 20
+#define TINY_GRID_X 4
+#define TINY_GRID_Y 5
 
 #define WIDTH 1200
 #define HEIGHT 800
@@ -40,6 +43,7 @@ int start_grid_x = START_X - ((GRID_X * SIZE) / 2);
 int start_grid_y = START_Y - ((GRID_Y * SIZE) / 2);
 unsigned int count = 0;
 unsigned int is_lose = 0;
+unsigned int is_pause = 0;
 
 typedef struct{
 	int x, y;
@@ -48,15 +52,18 @@ typedef struct{
 	int color_id;
 }Cube;
 
-typedef struct{
+typedef struct Tetra{
 	Cube shape[4];
 	int pivot_x, pivot_y;
 	unsigned long color;
 	int type;
+	struct Tetra *shadow;
 }Tetra;
 
 int grid[GRID_X][GRID_Y];
+int grid_next[TINY_GRID_X][TINY_GRID_Y];
 Tetra *runner = NULL;
+int next_tetra;
 
 void send_tetra();
 void rotate_tetra();
@@ -70,11 +77,10 @@ void printf_grid();
 
 void init_x();  
 void close_x(); 
-void redraw();
 void i_lose();
 
 int main(){
-
+	srand(time(NULL));
 	display = XOpenDisplay(NULL);	
 	if(display == NULL) return 1;
 
@@ -83,8 +89,9 @@ int main(){
 	runner = malloc(sizeof(Tetra));
 	if(runner == NULL) { perror("Malloc Error"); return 1;}
 	send_tetra(rand() % 5);
+	next_tetra = (rand() % 5);
 	
-	printf("\x1b[9C|Tetramino|");
+	printf("\x1b[9C|Tetramino|%d", next_tetra);
 	int size_px = GRID_X * SIZE;
 	int size_py = GRID_Y * SIZE;
 	printf("\x1b[2J\x1b[H");
@@ -100,25 +107,28 @@ int main(){
 			        if (key_sym == XK_Escape) {
                                         close_x();
                                         exit(1);
-                                }else if (key_sym == XK_Right) {
-					move_runner_lat(1);
-				}else if(key_sym == XK_Left){
-					move_runner_lat(-1);
-				}else if(key_sym == XK_Up){
-					rotate_tetra();
-				}else if(key_sym == XK_Down){
-                                        update_grid();
+				}
+				if(!is_pause){
+                                	if (key_sym == XK_Right) {
+						move_runner_lat(1);
+					}else if(key_sym == XK_Left){
+						move_runner_lat(-1);
+					}else if(key_sym == XK_Up){
+						rotate_tetra();
+					}else if(key_sym == XK_Down){
+                                        	update_grid();
+                                	}
                                 }
-                                int l = XLookupString(&event.xkey, text, sizeof(text) - 1, &key_sym, 0);
+				int l = XLookupString(&event.xkey, text, sizeof(text) - 1, &key_sym, 0);
                                 if(l > 0){
                                         text[l] = '\0';
-                                        //printf("You pressed the key: %c\n", text[0]);
+					if(text[0] == 'p') is_pause = !is_pause;
                                 }
 
 			}
     		}
 		if(is_lose) i_lose();
-		if(frame_count == 0) update_grid();
+		if(frame_count == 0 && !is_pause) update_grid();
                 XClearWindow(display, win);                     
                 draw_grids_cube();                              
                 draw_grid(start_grid_x, start_grid_y, size_px, size_py);
@@ -152,7 +162,7 @@ int check_if_lose(int a[8]){
 	return 0;
 }
 
-void create_tetra(int a[8], int pivot_x, int pivot_y, int color){
+void create_tetra(int g[GRID_X][GRID_Y], int a[8], int pivot_x, int pivot_y, int color){
 	XSetForeground(display, gc, colori[color]);
         int i = 0, j = 0;
 	runner->color = colori[color];
@@ -167,7 +177,7 @@ void create_tetra(int a[8], int pivot_x, int pivot_y, int color){
 		c->y = start_grid_y + (SIZE * a[j+1]);
 		c->color = colori[color];
 		c->color_id = runner->type;
-		grid[a[j]][a[j+1]] = color;
+		g[a[j]][a[j+1]] = color;
 		i++; j += 2;
 	}
 	count++; 
@@ -221,29 +231,29 @@ void rotate_tetra(){
 
 }
 
-void send_tetra(int type){
+void send_tetra(int g[GRID_X][GRID_Y], int type){
 	int a[8];
 	if(type == 0){
 		int tmp[] = {4,0,5,0,6,0,5,1};
 		memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(a, 5, 0, type);
+		if(check_if_lose(a) == 0) create_tetra(g, a, 5, 0, type);
 		//printf("Type is: %d\n", type);
 	}else if(type == 1){
 		int tmp[] = {3,0,4,0,5,0,6,0};
 		memcpy(a, tmp, sizeof a);
-                if(check_if_lose(a) == 0) create_tetra(a, 4, 0, type);
+                if(check_if_lose(a) == 0) create_tetra(g, a, 4, 0, type);
 	}else if(type == 2){
 		int tmp[] = {4,0,5,0,4,1,5,1};
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(a, -1, -1, type);
+		if(check_if_lose(a) == 0) create_tetra(g, a, -1, -1, type);
         }else if(type == 3){
 		int tmp[] = {4,0,4,1,4,2,5,2};
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(a, 4, 1, type);
+		if(check_if_lose(a) == 0) create_tetra(g, a, 4, 1, type);
         }else if(type == 4){
 		int tmp[] = {4,0,4,1,5,1,5,2}; 
                 memcpy(a, tmp, sizeof a);
-		if(check_if_lose(a) == 0) create_tetra(a, 4, 1, type);
+		if(check_if_lose(a) == 0) create_tetra(g, a, 4, 1, type);
         }
 }
 
@@ -315,6 +325,32 @@ void move_runner_lat(int off_x){
         }
 }
 
+void move_grid_down(int y_del){
+	for (int y = y_del; y > 0; y--) {
+        	for (int x = 0; x < GRID_X; x++) {
+            		grid[x][y] = grid[x][y-1];
+        	}
+    	}
+    	for (int x = 0; x < GRID_X; x++) {
+        	grid[x][0] = -1;
+    	}
+}
+
+void check_delete_update_rows(){
+	for(int y = 0; y < GRID_Y; y++ ){
+		int must_delete = 1;
+		for(int x = 0; x < GRID_X; x++){
+			if(grid[x][y] < 0) must_delete = 0;
+		}
+		if(must_delete){
+			for(int x = 0; x < GRID_X; x++){
+                        	grid[x][y] = -1;
+                	}
+			move_grid_down(y);
+		}
+	}
+}
+
 void update_grid(){
 	if(check_tetra()){
 		int color_tmp;
@@ -333,7 +369,9 @@ void update_grid(){
 		}
 		runner->pivot_y++;
 	}else{
-		send_tetra(rand() % 5);
+		check_delete_update_rows();
+		send_tetra(grid, next_tetra);
+		next_tetra = rand() % 5;
 	}
 }
 
@@ -354,18 +392,33 @@ void draw_grids_cube(){
 }
 
 void printf_grid(){
+	char point[128];
+	char *is_full  = "  ";
+	char *is_empty = "  ";
+	int size_cell  = strlen(is_full);
+	int tot_len    = GRID_X * size_cell;
+	snprintf(point, sizeof(point), "Point: %d", count);
+	printf("\x1B[%dA", GRID_Y +2);
 	
-	printf("\x1B[%dA", GRID_Y +2);	
+	printf("\u2554");
+	for(int i = 0;  i < tot_len; i++) printf("\u2550");
+	printf("\u2557\n");
+	/* grid */
 	for(int j = 0; j < GRID_Y; j++){
-                for(int i = 0; i < GRID_X; i++){
+                printf("\u2551");
+		for(int i = 0; i < GRID_X; i++){
 			int c = grid[i][j];	
-                        if(c >= 0) printf("\x1b[1;%d;%dm[x]\x1b[1;39;49m", 31+c, 41+c);
-			else printf("[ ]");
+                        if(c >= 0) printf("\x1b[1;%d;%dm%s\x1b[1;39;49m", 31+c, 41+c, is_full);
+			else printf("%s", is_empty);
         	}
-		printf("\n");
+		printf("\u2551\n");
 	}
-	printf("Point: %d\n", count);
-	//fflush(stdout);
+	printf("\u255A\u2550 %s ", point);
+	int start_point = strlen(point) + 3;
+	for(int i = start_point;  i < tot_len; i++) printf("\u2550");	
+	printf("\u255D\n");
+
+	fflush(stdout);
 }
 
 void init_x(){
@@ -381,7 +434,7 @@ void init_x(){
 
         gc = XCreateGC(display, win, 0, NULL);
 
-        XStoreName(display, win, "First X11 window");
+        XStoreName(display, win, "Tetramino");
         XSelectInput(display, win,
                 ExposureMask|ButtonPressMask|KeyPressMask|KeyReleaseMask);
         XMapWindow(display, win);
@@ -393,31 +446,3 @@ void close_x(){
         XDestroyWindow(display,win);	
     	XCloseDisplay(display);
 }
-
-/*
-
-                  <TYPE>                                                <GRID>
-                                                            0  1  2  3  4  5  6  7  8  9
-                                                           [ ][ ][ ][ ][x][x][x][ ][ ][ ]  0
- 1. [x][x][x]    2. [x][x][x][x]    3. [x][x]              [ ][ ][ ][ ][ ][x][ ][ ][ ][ ]  1
-       [x]                             [x][x]              [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ]  2
-                                                           [ ][ ][ ][x][x][x][x][ ][ ][ ]  3 
- 4. [x]          5. [x]                                    [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ]  4
-    [x]             [x][x]                                 [ ][ ][ ][ ][x][x][ ][ ][ ][ ]  5
-    [x][x]             [x]                                 [ ][ ][ ][ ][x][x][ ][ ][ ][ ]  6 
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ]  7
-                                                           [ ][ ][ ][ ][x][ ][ ][ ][ ][ ]  8
-                                                           [ ][ ][ ][ ][x][ ][ ][ ][ ][ ]  9
-                                                           [ ][ ][ ][ ][x][x][ ][ ][ ][ ] 10
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 11
-                                                           [ ][ ][ ][ ][x][ ][ ][ ][ ][ ] 12
-                                                           [ ][ ][ ][ ][x][x][ ][ ][ ][ ] 13
-                                                           [ ][ ][ ][ ][ ][x][ ][ ][ ][ ] 14
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 15
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 16
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 17
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 18
-                                                           [ ][ ][ ][ ][ ][ ][ ][ ][ ][ ] 19
-
-*/
- 
