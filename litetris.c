@@ -15,7 +15,7 @@
 #define TINY_GRID_X 6
 #define TINY_GRID_Y 5
 
-#define WIDTH 1200
+#define WIDTH  1200
 #define HEIGHT 800
 #define START_X WIDTH / 2
 #define START_Y HEIGHT / 2
@@ -94,6 +94,7 @@ int main(){
 	init_x();	
 	init_grid(grid);
 	init_grid(grid_next);
+	//XWindowAttributes *attr;	
 
 	runner = malloc(sizeof(Tetra));
 	next_run = malloc(sizeof(Tetra));
@@ -112,6 +113,10 @@ int main(){
 	{
             	frame_count = (frame_count+1)%FALL_SPEED;
 		XEvent event;
+		/*XGetWindowAttributes(display, win, attr);
+		WIDTH = attr->width;
+		HEIGHT = attr->height;*/
+
 		while (XPending(display) > 0) {
         		XNextEvent(display, &event);
 		
