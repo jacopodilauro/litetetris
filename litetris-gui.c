@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -91,55 +90,12 @@ void init_x();
 void close_x(); 
 void i_lose();
 
-// terminos
-struct termios restore_termios;
-
-void disable_raw_mode(){
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &restore_termios);
-}
-
-void enable_raw_mode(void){
-	tcgetattr(STDIN_FILENO, &restore_termios);
-	atexit(disable_raw_mode);
- 
-	struct termios raw = restore_termios;
-	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
-	raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
- 
-	raw.c_cc[VMIN]  = 0;
-	raw.c_cc[VTIME] = 0;
- 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-}
-
-void input_terminal_moves(void){
-	char c;
-	int n = read(STDIN_FILENO, &c, 1);
-	if(n <= 0) return;
- 
-	if(c == 'q' || c == 27){
-		disable_raw_mode();
-		close_x();
-		exit(1);
-	}
- 
-	if(c == 'p'){ is_pause = !is_pause; return; }
- 
-	if(!is_pause){
-		if(c == 'd')      move_runner_lat(1);
-		else if(c == 'a') move_runner_lat(-1);
-		else if(c == 'w') rotate_tetra();
-		else if(c == 's') update_grid();
-	}
-}
-
 int main(){
 	srand(time(NULL));
 	display = XOpenDisplay(NULL);	
 	if(display == NULL) return 1;
 
-	init_x();
-	enable_raw_mode();	
+	init_x();	
 	init_grid(grid);
 	init_grid(grid_next);
 	//XWindowAttributes *attr;	
@@ -193,9 +149,6 @@ int main(){
 
 			}
     		}
-	
-		input_terminal_moves();
-
 		if(is_lose) i_lose();
 		if(frame_count == 0 && !is_pause){ update_grid(); send_next(next_tetra); }
                 XClearWindow(display, win);                     
