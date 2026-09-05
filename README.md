@@ -3,7 +3,7 @@
 
 | Light | Dark |
 |:-:|:-:|
-|![gif](/img/tetris_git.gif)|![img](/img/tetris_dark.gif)|
+|![gif](/img/tetris_git.gif)|![img](/img/tetris_dark.gif) |
 
 Simple Tetris game running on terminal.
 
@@ -19,3 +19,7 @@ gcc litetris-terminal.c
 | Move | `a or ←` , `d or →` , `s or ↓` |
 | Rotate | `w or ↑` |
 | Quit | `q or [ESC]` |
+
+## License
+
+Distributed under the MIT License, see [`LICENSE`](LICENSE).
