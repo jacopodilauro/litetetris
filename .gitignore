@@ -1,3 +1,5 @@
 *.txt
 *.out
 *.swp
+litetris.c
+litetris-gui.c

@@ -101,14 +101,11 @@ void input_terminal_moves(){
         }
         return;
     }
-
     if(c == 'q'){
         disable_raw_mode();
         init_close();
     }
-
     if(c == 'p'){ is_pause = !is_pause; return; }
-
     if(!is_pause){
         if(c == 'd')      move_runner_lat(1);
         else if(c == 'a') move_runner_lat(-1);
@@ -231,7 +228,6 @@ void send_tetra(int type){
 		int tmp[] = {4,0,5,0,6,0,5,1};
 		memcpy(a, tmp, sizeof a);
 		if(check_if_lose(a) == 0) create_tetra(a, 5, 0, type);
-		//printf("Type is: %d\n", type);
 	}else if(type == 1){
 		int tmp[] = {3,0,4,0,5,0,6,0};
 		memcpy(a, tmp, sizeof a);
@@ -272,7 +268,6 @@ void send_next(int type){
                 int tmp[] = {1,1,2,1,3,1,2,2};
                 memcpy(a, tmp, sizeof a);
                 create_next(a, type);
-                //printf("Type is: %d\n", type);
         }else if(type == 1){
                 int tmp[] = {1,2,2,2,3,2,4,2};
                 memcpy(a, tmp, sizeof a);
@@ -394,60 +389,89 @@ void update_grid(){
 	}
 }
 
+void print_text(const char *txt, int len, const char* u_start, const char* u_end, const char* u_mid){
+    int pad = len - (int)strlen(txt);
+    int left = pad / 2;
+    int right = pad - left;
+    int i;
+    printf("%s", u_start);
+    for(i = 0; i < left; i++) printf("%s", u_mid);
+    printf("%s", txt);
+    for(i = 0; i < right; i++) printf("%s", u_mid);
+    printf("%s", u_end);
+}
+
 void printf_grid(){
-	char title[128];
 	char point[128];
-	char next_msg[128];
 	char *is_full  = "  ";
 	char *is_empty = " .";
+	char *_void = "";
 	int size_cell  = strlen(is_full);
 	int tot_len    = GRID_X * size_cell;
 	int tot_len_grid_next = TINY_GRID_X * size_cell;
-	snprintf(title, sizeof(title), "LITETRIS");
-	snprintf(point, sizeof(point), "Lvl: %d", count);
-	snprintf(next_msg, sizeof(next_msg), "Next");
+	int tot_len_com = 8 * size_cell;
+	snprintf(point, sizeof(point), "Score: %d", count);
 
-	//upper title
-	printf("\033[H");	
-	printf("\u2554\u2550\u2550\u2550\u2550\u2550 %s ", title);
-	int start_next = strlen(title)+7;
-	for(int i = start_next; i < tot_len; i++) printf("\u2550");
-	//upper next	
-	printf("\u2557\u2554");
-	for(int i = 0;  i < tot_len_grid_next; i++) printf("\u2550");
-    printf("\u2557\n");
+	printf("\033[H\033[0J");
+	printf("        ");
+	print_text(" Commands ", tot_len_com, "\u2554", "\u2557", "\u2550");
+	print_text(" LITETRIS ", tot_len, "\u2554", "\u2557", "\u2550");
+    print_text(" Next ", tot_len_grid_next, "\u2554", "\u2557\n", "\u2550");
 
 	/* grid */
 	for(int j = 0; j < GRID_Y; j++){
-                printf("\u2551");
+		printf("        ");
+		if(j == 0){
+		        print_text("", tot_len_com, "\u2551", "\u2551", " ");
+		}else if(j == 1){
+		        print_text("right: \u2192", tot_len_com+2, "\u2551", "\u2551", " ");
+		}else if(j == 2){
+		        print_text("left : \u2190", tot_len_com+2, "\u2551", "\u2551", " ");
+		}else if(j == 3){
+		        print_text("down : \u2193", tot_len_com+2, "\u2551", "\u2551", " ");
+		}else if(j == 4){
+		        print_text("rotate: \u2191", tot_len_com+2, "\u2551", "\u2551", " ");
+		}else if(j == 5){
+		        print_text("'q'/esc: quit", tot_len_com, "\u2551", "\u2551", " ");
+		}else if(j == 6){
+		        print_text("", tot_len_com, "\u2551", "\u2551", " ");
+		}else if(j == 7){
+		        print_text("", tot_len_com, "\u255A", "\u255D", "\u2550");
+		}else{ for(int i = 0;  i< tot_len_com+2; i++)printf(" "); }
+        
+        printf("\u2551");
 		for(int i = 0; i < GRID_X; i++){
 			int c = grid[i][j];	
-                        if(c >= 0) printf("\x1b[1;%d;%dm%s\x1b[1;39;49m", 31+c, 41+c, is_full);
+            if(c >= 0) printf("\x1b[1;%d;%dm%s\x1b[1;39;49m", 31+c, 41+c, is_full);
 			else printf("%s", is_empty);
-        	}
+        }
 		printf("\u2551");
 
 		if(j < TINY_GRID_Y){
 			printf("\u2551");
 			for(int i = 0; i < TINY_GRID_X; i++){
-                        	int c = grid_next[i][j];     
-                        	if(c >= 0) printf("\x1b[1;%d;%dm%s\x1b[1;39;49m", 31+c, 41+c, is_full);
-                        	else printf("%s", is_empty);
-                	}
+				int c = grid_next[i][j];     
+				if(c >= 0) printf("\x1b[1;%d;%dm%s\x1b[1;39;49m", 31+c, 41+c, is_full);
+				else printf("%s", is_empty);
+            }
 			printf("\u2551\n");
 		}else if(j == TINY_GRID_Y){
-			// print end next
-        		printf("\u255A\u2550\u2550\u2550 %s ", next_msg);
-			int start_next = strlen(next_msg)+5;
-        		for(int i = start_next; i < tot_len_grid_next; i++) printf("\u2550");
-		        printf("\u255D\n");
+		        print_text(_void, tot_len_grid_next, "\u255A", "\u255D\n", "\u2550");
+		}else if(j == TINY_GRID_Y+2){
+		        print_text(" Stats ", tot_len_grid_next, "\u2554", "\u2557\n", "\u2550");
+		}else if(j == TINY_GRID_Y+3){
+		        print_text(_void, tot_len_grid_next, "\u2551", "\u2551\n", " ");
+		}else if(j == TINY_GRID_Y+4){
+		        print_text(point, tot_len_grid_next, "\u2551", "\u2551\n", " ");
+		}else if(j == TINY_GRID_Y+5){
+		        print_text(_void, tot_len_grid_next, "\u2551", "\u2551\n", " ");
+		}else if(j == TINY_GRID_Y+6){
+		        print_text(_void, tot_len_grid_next, "\u255A", "\u255D\n", "\u2550");
 		}else printf("\n"); 
 	}
-	printf("\u255A\u2550\u2550\u2550\u2550\u2550 %s ", point);
-	int start_point = strlen(point) + 7;
-	for(int i = start_point;  i < tot_len; i++) printf("\u2550");	
-	printf("\u255D\n");
-
+	for(int i = 0;  i< tot_len_com+2; i++)printf(" ");
+	printf("        ");
+	print_text(_void, tot_len, "\u255A", "\u255D\n", "\u2550");
 	fflush(stdout);
 }
 
